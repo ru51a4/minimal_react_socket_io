@@ -1,0 +1,253 @@
+<html>
+
+<body>
+    <meta charset="utf-8">
+
+    <script src="https://cdn.socket.io/4.8.0/socket.io.min.js"
+        integrity="sha384-OoIbkvzsFFQAG88r+IqMAjyOtYDPGO0cqK5HF5Uosdy/zUEGySeAzytENMDynREd"
+        crossorigin="anonymous"></script>
+
+
+    <script>
+        var _socket = io("http://188.120.245.72:3000");
+
+    </script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-giJF6kkoqNQ00vy+HMDP7azOuL0xtbfIcaT9wjKHr8RbDVddVHyTfAAsrekwKmP1" crossorigin="anonymous">
+    <link href='http://fonts.googleapis.com/css?family=Roboto' rel='stylesheet' type='text/css'>
+    <script src="https://unpkg.com/rxjs@^7/dist/bundles/rxjs.umd.min.js "></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.6.2/axios.min.js"
+        integrity="sha512-b94Z6431JyXY14iSXwgzeZurHHRNkLt9d6bAHt7BZT38eqV+GyngIi/tVye4jBKPYQ2lBdRs0glww4fmpuLRwA=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdn.jsdelivr.net/gh/ru51a4/minimal_react/dist/mreact.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
+        crossorigin="anonymous"></script>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+</body>
+<script>
+    var Render;
+    const { BehaviorSubject } = rxjs;
+
+    class store {
+        chat = new BehaviorSubject([]);
+        login = new BehaviorSubject(null);
+        current = new BehaviorSubject('ru51a4');
+    };
+    var _store = new store();
+    class component_main extends component {
+        state = {
+            isAuth: () => {
+                return !_store.login.getValue() ? 'ml-2 btn btn-primary disabled' : 'ml-2 btn btn-primary';
+            },
+            login: () => {
+                return _store.login.getValue();
+            },
+            chatlist: [
+            ]
+        }
+
+        body() {
+            return `
+            <div>
+                <div class="d-flex justify-content-end">
+                    <button type="button" class="btn mx-5 btn-primary" data-bs-toggle="modal" data-bs-target="#exampleModal">
+                        <span>Сменить Имя</span>
+                    </button>
+
+                </div>
+                <div class="container">
+                <div class="row mt-5">
+                    <div class="col-4">
+                        <list>
+                    </div>
+                </div>
+                <div class="col-8">
+                        <div style="max-height: 70vh;overflow: auto;">
+                            <chat>
+                        </div>
+                        </div>
+                        <div class="card">
+                            <div class="card-body d-flex justify-content-between">
+                                <div class="input-group">
+                                    <textarea class="form-control" aria-label="With textarea"></textarea>
+                                </div>
+                                <button r-bind.class="isAuth" role="button"  type="button" r-click="send">send</button>
+                            </div>
+                        </div>
+                </div>
+                <login>
+                </div>
+                </div>
+            </div>
+            `;
+        }
+        init = () => {
+            _store.current.subscribe((d) => {
+                axios.get(`/getMessages?chat=${_store.current.getValue()}`).then((c) => {
+                    _store.chat.next(c.data)
+                });
+
+            })
+            axios.get(`/getMessages?chat=${_store.current.getValue()}`).then((c) => {
+                _store.chat.next(c.data)
+            });
+        }
+        send = () => {
+            let t = document.querySelector('textarea').value
+            console.log(_store.current)
+            _socket.emit(_store.current.getValue(), { t: t, u: _store.login.getValue() });
+
+
+        }
+    }
+
+    class component_chat extends component {
+        state = {
+            list: [],
+        }
+        init() {
+            _store.chat.subscribe((d) => {
+                console.log({ d })
+                this.state.list = d;
+                Render.renderDom();
+            });
+        }
+        body = () => {
+            return `
+                <div r-for="list" class="card">
+                    <div class="card-body">
+                        <h5 class="card-title" r-bind="name"></h5>
+                        <p class="card-text" r-bind="text"></p>
+                    </div>
+                </div>
+            `;
+        }
+    }
+
+    class component_chatroom_list extends component {
+        state = {
+            list: [
+                {
+                    name: 'ru51a4'
+                },
+            ],
+
+            curr: (val) => {
+                console.log({ val })
+                return _store.current.getValue() == val.name ? 'chat curr card' : 'chat  card'
+            }
+        }
+        init = () => {
+            console.log("asd")
+            axios.get("/getChats").then((c) => {
+                console.log({ c })
+                this.state.list = c.data
+                this.state.list.map((c) => c.name).forEach((asd) => {
+                    _socket.on(asd, (msg) => {
+                        axios.get(`/getMessages?chat=${_store.current.getValue()}`).then((c) => {
+                            _store.chat.next(c.data)
+                        });
+                    });
+                })
+
+                Render.renderDom();
+            });
+        }
+        body = () => {
+            return `
+                    
+                    <div r-for="list" r-bind.class="curr">
+                        <div class="card-body" r-click="setcurr.name">
+                            <h5 class="card-title" r-bind="name"></h5>
+                        </div>
+                    </div>
+            `
+        }
+        setcurr = (val) => {
+            console.log({ val })
+            _store.current.next(val)
+            Render.renderDom();
+        }
+    }
+
+
+    class component_modal_login extends component {
+        state = {
+
+        }
+        body = () => {
+            return `
+                    
+            <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content p-5">
+                    <input type="email" class="username form-control" id="exampleFormControlInput1" placeholder="ru51a4">
+                    <br>
+                    <button r-click="login" type="button" data-bs-dismiss="modal" class="ml-2 btn btn-primary">Войти</button>
+                </div>
+
+            </div>
+        </div>
+            `
+        }
+        login = () => {
+            _store.login.next(document.querySelector('.username').value)
+            Render.renderDom();
+        }
+    }
+
+
+
+    var components = [
+        {
+            name: 'main',
+            component: component_main
+        },
+        {
+            name: 'chat',
+            component: component_chat
+        },
+        {
+            name: 'list',
+            component: component_chatroom_list
+        },
+        {
+            name: 'login',
+            component: component_modal_login
+        }
+    ];
+</script>
+<style>
+    .chat:hover {
+        background-color: blueviolet;
+        cursor: pointer;
+    }
+
+    .chat.curr {
+        background-color: blue;
+        color: white;
+    }
+</style>
+<div class="main">
+    <main>
+</div>
+<script>
+    Render = new render(document.querySelector('.main'), components);
+
+    function _main() {
+        Render.renderDom();
+        Render.renderDom();
+        Render.renderDom();
+
+    }
+
+    _main();
+</script>
+
+
+</div>
+
+</html>
