@@ -97,7 +97,9 @@
         }
         send = () => {
             let t = document.querySelector('textarea').value
-            console.log(_store.current)
+            if (!t) {
+                return;
+            }
             _socket.emit(_store.current.getValue(), { t: t, u: _store.login.getValue() });
 
 
