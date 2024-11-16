@@ -147,6 +147,9 @@
                 this.state.list = c.data
                 this.state.list.map((c) => c.name).forEach((asd) => {
                     _socket.on(asd, (msg) => {
+                        if (asd != _store.current.getValue()) {
+                            return;
+                        }
                         axios.get(`/getMessages?chat=${_store.current.getValue()}`).then((c) => {
                             _store.chat.next(c.data)
                         });
